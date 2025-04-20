@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#SUBSET="video_dev"
 CASE=3
 
 python core/extract_frames_and_AVCS.py --ACS-case=$CASE

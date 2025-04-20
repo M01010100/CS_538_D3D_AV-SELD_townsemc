@@ -88,21 +88,58 @@ def frame_transform(frame, ACS_case):
 
 
 
+#def main():
+#
+#    if args.ACS_case == 3: # simply extract frames
+#        for set in glob.glob(os.path.join(conf.input['data_path'], args.subset, '*')):
+#            for file in glob.glob(os.path.join(set, '*')):
+#                destination = os.path.join(conf.input['data_path'], args.subset.replace('video', 'frames'),
+#                                           os.path.basename(set), '3', os.path.basename(file))
+#                if os.path.exists(destination):
+#                    shutil.rmtree(destination)
+#                os.makedirs(destination)
+#                command = (
+#                            'ffmpeg -i %s -threads 10 -deinterlace -vf "fps=%d,scale=448:224" -qscale:v 1 -qmin 1 -start_number 0 %s/%s' % (
+#                    file, conf.input['fps'], destination, '%05d.jpg'))
+#                subprocess.call(command, shell=True, stdout=None)
 def main():
-
-    if args.ACS_case == 3: # simply extract frames
-        for set in glob.glob(os.path.join(conf.input['data_path'], args.subset, '*')):
-            for file in glob.glob(os.path.join(set, '*')):
+    if args.ACS_case == 3:  # simply extract frames
+        print(f"Extracting frames from {os.path.join(conf.input['data_path'], args.subset, '*')}")
+        for set_dir in glob.glob(os.path.join(conf.input['data_path'], args.subset, '*')):
+            print(f"Processing set: {set_dir}")
+            for file in glob.glob(os.path.join(set_dir, '*')):
+                # Create a directory using the video filename
+                video_file_name = os.path.basename(file)
                 destination = os.path.join(conf.input['data_path'], args.subset.replace('video', 'frames'),
-                                           os.path.basename(set), '3', os.path.basename(file))
+                                          os.path.basename(set_dir), '3', video_file_name)
+                
                 if os.path.exists(destination):
                     shutil.rmtree(destination)
                 os.makedirs(destination)
+                
+                print(f"Extracting frames from {file} to {destination}")
+                
+                # Extract frames using ffmpeg with updated deinterlace filter
                 command = (
-                            'ffmpeg -i %s -threads 10 -deinterlace -vf "fps=%d,scale=448:224" -qscale:v 1 -qmin 1 -start_number 0 %s/%s' % (
-                    file, conf.input['fps'], destination, '%05d.jpg'))
-                subprocess.call(command, shell=True, stdout=None)
-
+                    f'ffmpeg -i "{file}" -threads 10 -vf "yadif,fps={conf.input["fps"]},scale=448:224" '
+                    f'-qscale:v 1 -qmin 1 -start_number 0 "{destination}/%05d.jpg"'
+                )
+                print(f"Running command: {command}")
+                result = subprocess.call(command, shell=True, stdout=None)
+                
+                if result != 0:
+                    print(f"Warning: ffmpeg command failed with return code {result}")
+                    print("Trying alternative command...")
+                    # Fallback command without deinterlacing
+                    command = (
+                        f'ffmpeg -i "{file}" -threads 10 -vf "fps={conf.input["fps"]},scale=448:224" '
+                        f'-qscale:v 1 -qmin 1 -start_number 0 "{destination}/%05d.jpg"'
+                    )
+                    print(f"Running command: {command}")
+                    result = subprocess.call(command, shell=True, stdout=None)
+                    
+                    if result != 0:
+                        print(f"Error: Both ffmpeg commands failed. Check your video files and ffmpeg installation.")
 
     else: #ACS = 3 is the original φ = φ, θ = θ
         if glob.glob(os.path.join(conf.input['data_path'], args.subset.replace('video', 'frames'), '*')) == []:
@@ -120,11 +157,6 @@ def main():
                     frame = cv2.imread(frame_path)
                     transformed_frame = frame_transform(frame, args.ACS_case)
                     cv2.imwrite(os.path.join(output_dir, os.path.basename(frame_path)), transformed_frame)
-
-
-
-
-
 
 
 if __name__ == "__main__":
